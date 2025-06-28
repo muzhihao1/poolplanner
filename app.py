@@ -36,7 +36,8 @@ else:
             "table_width": 2850,
             "table_height": 1550,
             "grid_size": 100,
-            "use_regular_layout": True
+            "use_regular_layout": True,
+            "use_enhanced_algorithm": True  # 新增：默认使用增强算法
         },
         "api": {
             "host": "127.0.0.1",
@@ -68,7 +69,8 @@ def health_check():
     """健康检查"""
     return jsonify({
         'status': 'healthy',
-        'version': '1.0.0'
+        'version': '2.0.0',  # 版本升级
+        'features': ['enhanced_algorithm', 'smart_grid_layout', 'gap_filling']
     })
 
 
@@ -94,7 +96,8 @@ def optimize_layout():
             "table_width": 2850,
             "table_height": 1550,
             "grid_size": 100,
-            "use_regular_layout": true  # 是否使用规则布局算法
+            "use_regular_layout": true,
+            "use_enhanced_algorithm": true  # 新增：是否使用增强算法
         }
     }
     """
@@ -118,7 +121,8 @@ def optimize_layout():
             'table_distance': 1400,
             'table_width': 2850,
             'table_height': 1550,
-            'grid_size': 100
+            'grid_size': 100,
+            'use_enhanced_algorithm': True  # 默认使用增强算法
         }
         default_config.update(config)
         
@@ -155,16 +159,26 @@ def optimize_layout():
         # 计算有效区域
         geometry.calculate_valid_area(default_config['wall_distance'])
         
-        # 创建优化器
-        optimizer = LayoutOptimizer(default_config)
+        # 选择算法
+        use_enhanced = default_config.get('use_enhanced_algorithm', True)
         
-        # 执行优化
-        use_regular_layout = default_config.get('use_regular_layout', True)  # 默认使用规则布局
-        result = optimizer.optimize(boundary, obstacles, use_regular_layout=use_regular_layout)
+        if use_enhanced:
+            # 使用增强算法
+            from core.enhanced_layout import EnhancedLayoutGenerator
+            generator = EnhancedLayoutGenerator(default_config)
+            tables = generator.generate_layout(boundary, obstacles)
+            algorithm_used = "enhanced"
+        else:
+            # 使用传统优化器
+            optimizer = LayoutOptimizer(default_config)
+            use_regular_layout = default_config.get('use_regular_layout', True)
+            result = optimizer.optimize(boundary, obstacles, use_regular_layout=use_regular_layout)
+            tables = result['tables']
+            algorithm_used = "traditional"
         
         # 转换结果格式
         tables_data = []
-        for table in result['tables']:
+        for table in tables:
             tables_data.append({
                 'x': float(table.x),
                 'y': float(table.y),
@@ -173,21 +187,49 @@ def optimize_layout():
                 'rotation': float(table.rotation)
             })
         
-        # 确保所有数值都是Python原生类型
+        # 计算统计信息
         stats_data = {}
-        if 'stats' in result:
-            for key, value in result['stats'].items():
-                if hasattr(value, 'item'):  # numpy类型
-                    stats_data[key] = value.item()
-                else:
-                    stats_data[key] = value
+        if tables:
+            # 计算场地总面积
+            min_x = min(p[0] for p in boundary)
+            max_x = max(p[0] for p in boundary)
+            min_y = min(p[1] for p in boundary)
+            max_y = max(p[1] for p in boundary)
+            total_area = (max_x - min_x) * (max_y - min_y)
+            
+            # 计算台球桌占用面积
+            table_area = default_config['table_width'] * default_config['table_height']
+            used_area = len(tables) * table_area
+            
+            # 计算空间利用率
+            space_utilization = (used_area / total_area) * 100 if total_area > 0 else 0
+            
+            # 计算平均间距
+            distances = []
+            for i, table1 in enumerate(tables):
+                bounds1 = table1.get_bounds()
+                for j, table2 in enumerate(tables[i+1:], i+1):
+                    bounds2 = table2.get_bounds()
+                    distances.append(bounds1.distance_to(bounds2))
+            
+            average_distance = sum(distances) / len(distances) if distances else 0
+            
+            stats_data = {
+                'space_utilization': round(space_utilization, 2),
+                'total_area': round(total_area / 1000000, 2),  # 转换为平方米
+                'used_area': round(used_area / 1000000, 2),    # 转换为平方米
+                'average_distance': round(average_distance, 0),
+                'table_count': len(tables),
+                'algorithm_used': algorithm_used
+            }
         
         return jsonify({
             'success': True,
             'tables': tables_data,
-            'count': int(result['count']),
+            'count': len(tables),
             'stats': stats_data,
-            'optimization_time': float(result['optimization_time'])
+            'optimization_time': 0.0,  # 简化处理
+            'algorithm': algorithm_used
         })
         
     except Exception as e:
@@ -203,17 +245,6 @@ def optimize_layout():
 def validate_layout():
     """
     验证布局是否满足约束
-    
-    请求体:
-    {
-        "boundary": [[x1, y1], [x2, y2], ...],
-        "obstacles": [...],
-        "tables": [
-            {"x": x, "y": y, "width": w, "height": h, "rotation": r},
-            ...
-        ],
-        "config": {...}
-    }
     """
     try:
         data = request.get_json()
@@ -314,13 +345,14 @@ def test_layout():
             }
         ]
         
-        # 默认配置
+        # 默认配置（使用增强算法）
         config = {
             'wall_distance': 1500,
             'table_distance': 1400,
             'table_width': 2850,
             'table_height': 1550,
-            'grid_size': 200
+            'grid_size': 200,
+            'use_enhanced_algorithm': True
         }
         
         # 创建请求数据
@@ -363,4 +395,16 @@ def internal_error(error):
 
 if __name__ == '__main__':
     # 开发模式运行
+    print("=" * 60)
+    print("🎱 台球桌自动布局系统 v2.0")
+    print("=" * 60)
+    print("✨ 新功能:")
+    print("  - 增强布局算法")
+    print("  - 智能网格排列")
+    print("  - 空隙填充优化")
+    print("  - 布局质量评估")
+    print("=" * 60)
+    print(f"🚀 启动服务器: http://127.0.0.1:8080")
+    print("=" * 60)
+    
     app.run(debug=True, host='127.0.0.1', port=8080)

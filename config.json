@@ -6,6 +6,7 @@
     "table_height": 1550,
     "grid_size": 100,
     "use_regular_layout": true,
+    "use_enhanced_algorithm": true,
     "layout_mode": "auto",
     "optimize_count": true
   },
@@ -15,21 +16,44 @@
       "wall_distance": 1500,
       "table_distance": 1400,
       "table_width": 2850,
-      "table_height": 1550
+      "table_height": 1550,
+      "use_enhanced_algorithm": true
     },
     "compact": {
       "name": "紧凑配置",
       "wall_distance": 1200,
       "table_distance": 1200,
       "table_width": 2850,
-      "table_height": 1550
+      "table_height": 1550,
+      "use_enhanced_algorithm": true
     },
     "spacious": {
       "name": "宽敞配置",
       "wall_distance": 2000,
       "table_distance": 1800,
       "table_width": 2850,
-      "table_height": 1550
+      "table_height": 1550,
+      "use_enhanced_algorithm": true
+    },
+    "maximum": {
+      "name": "最大化配置",
+      "wall_distance": 1000,
+      "table_distance": 1000,
+      "table_width": 2850,
+      "table_height": 1550,
+      "use_enhanced_algorithm": true
+    }
+  },
+  "algorithms": {
+    "enhanced": {
+      "name": "增强算法",
+      "description": "智能网格布局 + 空隙填充优化",
+      "features": ["smart_grid", "gap_filling", "quality_assessment"]
+    },
+    "traditional": {
+      "name": "传统算法",
+      "description": "多策略组合优化",
+      "features": ["multi_strategy", "greedy_search", "local_optimization"]
     }
   },
   "visualization": {
@@ -58,7 +82,9 @@
     "max_iterations": 15,
     "remove_ratio": 0.2,
     "grid_search_sizes": [50, 100, 200],
-    "compression_step": 50
+    "compression_step": 50,
+    "fine_scan_step": 25,
+    "alignment_tolerance": 100
   },
   "api": {
     "host": "127.0.0.1",

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from .maxrects import Rectangle, BilliardTable
 from .constraints import ConstraintSolver, DistanceConstraint
+from .enhanced_layout import EnhancedLayoutGenerator
 from shapely.geometry import Polygon
 
 
@@ -33,9 +34,9 @@ class OptimizedLayoutGenerator:
         生成优化布局，最大化台球桌数量
         
         策略：
-        1. 先尝试规则网格布局
-        2. 然后在空隙中尝试放置额外的台球桌
-        3. 尝试不同的方向组合
+        1. 优先使用增强布局算法（新）
+        2. 如果效果不佳，回退到原有策略
+        3. 对比选择最佳结果
         """
         # 计算场地面积
         area = self._calculate_area(boundary)
@@ -46,6 +47,8 @@ class OptimizedLayoutGenerator:
             from .large_field_layout import LargeFieldLayoutGenerator
             large_gen = LargeFieldLayoutGenerator(self.config)
             return large_gen.generate_layout(boundary, obstacles)
+        
+        print(f"\n场地面积: {area/1000000:.1f}平米")
         
         # 获取边界
         min_x = min(p[0] for p in boundary)
@@ -62,83 +65,78 @@ class OptimizedLayoutGenerator:
         }
         
         best_layout = []
+        best_count = 0
         
-        # 策略1: 纯横向布局
-        print("尝试横向布局...")
-        layout1 = self._try_single_orientation_layout(
-            boundary, obstacles, context, rotation=0
-        )
-        print(f"横向布局结果: {len(layout1)}个台球桌")
-        if len(layout1) > len(best_layout):
-            best_layout = layout1
+        # 策略1: 使用新的增强布局算法
+        print("策略1: 增强布局算法")
+        enhanced_gen = EnhancedLayoutGenerator(self.config)
+        enhanced_layout = enhanced_gen.generate_layout(boundary, obstacles)
+        print(f"增强算法结果: {len(enhanced_layout)}个台球桌")
         
-        # 策略2: 纯纵向布局
-        print("\n尝试纵向布局...")
-        layout2 = self._try_single_orientation_layout(
-            boundary, obstacles, context, rotation=90
-        )
-        print(f"纵向布局结果: {len(layout2)}个台球桌")
-        if len(layout2) > len(best_layout):
-            best_layout = layout2
+        if len(enhanced_layout) > best_count:
+            best_layout = enhanced_layout
+            best_count = len(enhanced_layout)
         
-        # 策略3: 混合布局 - 在已有布局基础上填充
-        print("\n尝试混合填充布局...")
-        layout3 = self._try_mixed_fill_layout(boundary, obstacles, context)
-        print(f"混合布局结果: {len(layout3)}个台球桌")
-        if len(layout3) > len(best_layout):
-            best_layout = layout3
+        # 策略2: 原有的优化策略（作为备选）
+        print("\n策略2: 传统优化算法")
         
-        # 策略4: 贪心算法 - 尝试所有可能的位置
-        print("\n尝试贪心算法...")
-        layout4 = self._try_greedy_layout(boundary, obstacles, context)
-        print(f"贪心算法结果: {len(layout4)}个台球桌")
-        if len(layout4) > len(best_layout):
-            best_layout = layout4
+        # 纯横向布局
+        layout_h = self._try_single_orientation_layout(boundary, obstacles, context, rotation=0)
+        print(f"横向布局结果: {len(layout_h)}个台球桌")
+        if len(layout_h) > best_count:
+            best_layout = layout_h
+            best_count = len(layout_h)
         
-        # 策略5: 多遍优化 - 在最佳布局基础上继续填充
-        print("\n尝试多遍优化...")
-        layout5 = self._multi_pass_optimization(best_layout.copy(), boundary, obstacles, context)
-        print(f"多遍优化结果: {len(layout5)}个台球桌")
-        if len(layout5) > len(best_layout):
-            best_layout = layout5
+        # 纯纵向布局
+        layout_v = self._try_single_orientation_layout(boundary, obstacles, context, rotation=90)
+        print(f"纵向布局结果: {len(layout_v)}个台球桌")
+        if len(layout_v) > best_count:
+            best_layout = layout_v
+            best_count = len(layout_v)
         
-        # 策略6: 顺序布局 - 模拟人工摆放
-        print("\n尝试顺序布局...")
-        from .sequential_layout import SequentialLayoutGenerator
-        seq_generator = SequentialLayoutGenerator(self.config)
-        layout6 = seq_generator.generate_layout(boundary, obstacles)
-        print(f"顺序布局结果: {len(layout6)}个台球桌")
-        if len(layout6) > len(best_layout):
-            best_layout = layout6
+        # 混合填充布局
+        layout_mixed = self._try_mixed_fill_layout(boundary, obstacles, context)
+        print(f"混合布局结果: {len(layout_mixed)}个台球桌")
+        if len(layout_mixed) > best_count:
+            best_layout = layout_mixed
+            best_count = len(layout_mixed)
         
-        # 策略7: 穷举搜索 - 更彻底的搜索
-        print("\n尝试穷举搜索...")
-        from .exhaustive_layout import ExhaustiveLayoutGenerator
-        exh_generator = ExhaustiveLayoutGenerator(self.config)
-        layout7 = exh_generator.generate_layout(boundary, obstacles)
-        print(f"穷举搜索结果: {len(layout7)}个台球桌")
-        if len(layout7) > len(best_layout):
-            best_layout = layout7
-        
-        # 对最终结果按位置排序，确保编号顺序合理（从上到下，从左到右）
-        if best_layout:
-            best_layout.sort(key=lambda t: (t.y, t.x))
-            print("\n调整后的台球桌顺序:")
-            for i, table in enumerate(best_layout):
-                orientation = "纵向" if table.rotation == 90 else "横向"
-                print(f"  台球桌#{i+1}: ({table.x:.0f}, {table.y:.0f}) - {orientation}")
-        
-        # 如果有障碍物，使用专门的障碍物感知算法
+        # 策略3: 如果有障碍物，使用专门的障碍物感知算法
         if obstacles:
-            print("\n检测到障碍物，使用障碍物感知布局...")
+            print("\n策略3: 障碍物感知布局")
             from .obstacle_aware_layout import ObstacleAwareLayoutGenerator
             obstacle_gen = ObstacleAwareLayoutGenerator(self.config)
             layout_obstacle = obstacle_gen.generate_layout(boundary, obstacles)
             print(f"障碍物感知布局结果: {len(layout_obstacle)}个台球桌")
-            if len(layout_obstacle) > len(best_layout):
+            if len(layout_obstacle) > best_count:
                 best_layout = layout_obstacle
+                best_count = len(layout_obstacle)
         
-        print(f"\n优化布局完成: {len(best_layout)}个台球桌")
+        # 策略4: 最终优化 - 在最佳布局基础上进行微调
+        if best_layout:
+            print(f"\n策略4: 最终优化（基于{best_count}个台球桌的布局）")
+            final_layout = self._final_optimization(best_layout.copy(), boundary, obstacles, context)
+            print(f"最终优化结果: {len(final_layout)}个台球桌")
+            if len(final_layout) >= best_count:
+                best_layout = final_layout
+                best_count = len(final_layout)
+        
+        # 对最终结果按位置排序，确保编号顺序合理
+        if best_layout:
+            best_layout.sort(key=lambda t: (t.y, t.x))
+            print(f"\n最终布局: {len(best_layout)}个台球桌")
+            
+            # 显示布局统计
+            horizontal_count = sum(1 for t in best_layout if t.rotation == 0)
+            vertical_count = sum(1 for t in best_layout if t.rotation == 90)
+            print(f"  横向: {horizontal_count}个, 纵向: {vertical_count}个")
+            
+            # 计算空间利用率
+            table_area = len(best_layout) * self.table_width * self.table_height / 1000000  # 平方米
+            field_area = area / 1000000  # 平方米
+            utilization = (table_area / field_area) * 100
+            print(f"  空间利用率: {utilization:.1f}%")
+        
         return best_layout
     
     def _try_single_orientation_layout(self, boundary, obstacles, context, rotation):
@@ -192,8 +190,7 @@ class OptimizedLayoutGenerator:
         max_y = max(p[1] for p in boundary)
         
         # 尝试在空隙中放置纵向台球桌
-        # 扫描所有可能的位置
-        scan_step = 100  # 更细的扫描步长用于填充空隙
+        scan_step = 50  # 更细的扫描步长
         
         y = min_y + self.wall_distance
         while y + self.table_width <= max_y - self.wall_distance:
@@ -215,180 +212,53 @@ class OptimizedLayoutGenerator:
         
         return layout
     
-    def _try_greedy_layout(self, boundary, obstacles, context):
-        """贪心算法 - 扫描所有位置，优先放置不会阻挡其他位置的台球桌"""
-        layout = []
-        
+    def _final_optimization(self, layout, boundary, obstacles, context):
+        """最终优化 - 在现有布局基础上寻找更多空隙"""
         min_x = min(p[0] for p in boundary)
         max_x = max(p[0] for p in boundary)
         min_y = min(p[1] for p in boundary)
         max_y = max(p[1] for p in boundary)
         
-        # 候选位置列表
-        candidates = []
+        # 使用非常细的扫描步长进行最后的空隙搜索
+        scan_step = 25
+        added_count = 0
         
-        # 生成所有可能的候选位置（横向和纵向）
-        scan_step = 50  # 使用更细的扫描步长以找到更多位置
+        print("  进行精细空隙搜索...")
         
-        # 横向候选
-        y = min_y + self.wall_distance
-        while y + self.table_height <= max_y - self.wall_distance:
-            x = min_x + self.wall_distance
-            while x + self.table_width <= max_x - self.wall_distance:
-                table = BilliardTable(x, y, self.table_width, self.table_height, 0)
-                valid, violations = self.constraint_solver.validate_layout([table], context)
-                if valid:
-                    candidates.append(table)
-                x += scan_step
-            y += scan_step
-        
-        # 纵向候选
-        y = min_y + self.wall_distance
-        while y + self.table_width <= max_y - self.wall_distance:
-            x = min_x + self.wall_distance
-            while x + self.table_height <= max_x - self.wall_distance:
-                table = BilliardTable(x, y, self.table_width, self.table_height, 90)
-                valid, violations = self.constraint_solver.validate_layout([table], context)
-                if valid:
-                    candidates.append(table)
-                x += scan_step
-            y += scan_step
-        
-        print(f"找到{len(candidates)}个候选位置")
-        
-        # 优化贪心选择：使用更快的算法
-        # 改进的排序策略：优先从左上角开始，按行列顺序
-        def position_score(table):
-            # 按照从左到右，从上到下的顺序
-            # 这样更符合实际摆放习惯
-            return table.y * 10000 + table.x
-        
-        candidates.sort(key=position_score)
-        
-        # 简化的贪心选择
-        while candidates:
-            # 选择第一个有效的候选
-            placed = False
-            for i, candidate in enumerate(candidates):
-                temp_layout = layout + [candidate]
-                valid, violations = self.constraint_solver.validate_layout(temp_layout, context)
-                
-                if valid:
-                    layout.append(candidate)
-                    placed = True
-                    print(f"  放置台球桌#{len(layout)} at ({candidate.x:.0f}, {candidate.y:.0f}), 方向:{candidate.rotation}°")
+        # 多轮扫描，每轮使用不同的起始点
+        for start_offset in [0, scan_step//2]:
+            for y in range(int(min_y + self.wall_distance + start_offset), 
+                          int(max_y - self.wall_distance - min(self.table_height, self.table_width)), 
+                          scan_step):
+                for x in range(int(min_x + self.wall_distance + start_offset), 
+                              int(max_x - self.wall_distance - min(self.table_width, self.table_height)), 
+                              scan_step):
                     
-                    # 移除不再有效的候选
-                    new_candidates = []
-                    for j, other in enumerate(candidates):
-                        if i != j:
-                            temp_layout2 = layout + [other]
-                            valid2, _ = self.constraint_solver.validate_layout(temp_layout2, context)
-                            if valid2:
-                                new_candidates.append(other)
-                    candidates = new_candidates
-                    break
-            
-            if not placed:
-                break
+                    # 尝试两种方向
+                    for rotation in [0, 90]:
+                        if rotation == 0:
+                            width, height = self.table_width, self.table_height
+                        else:
+                            width, height = self.table_height, self.table_width
+                        
+                        # 边界检查
+                        if x + width > max_x - self.wall_distance:
+                            continue
+                        if y + height > max_y - self.wall_distance:
+                            continue
+                        
+                        table = BilliardTable(x, y, self.table_width, self.table_height, rotation)
+                        temp_layout = layout + [table]
+                        valid, _ = self.constraint_solver.validate_layout(temp_layout, context)
+                        
+                        if valid:
+                            layout.append(table)
+                            added_count += 1
+                            print(f"    发现空隙: 位置({x}, {y}), 方向{rotation}°")
+                            break  # 找到一个就跳出方向循环
         
+        print(f"  精细搜索新增: {added_count}个台球桌")
         return layout
-    
-    def _multi_pass_optimization(self, initial_layout, boundary, obstacles, context):
-        """多遍优化 - 在现有布局基础上寻找空隙并填充"""
-        layout = initial_layout.copy()
-        
-        min_x = min(p[0] for p in boundary)
-        max_x = max(p[0] for p in boundary)
-        min_y = min(p[1] for p in boundary)
-        max_y = max(p[1] for p in boundary)
-        
-        # 首先识别空隙区域
-        print("  识别空隙区域...")
-        gaps = self._find_gaps(layout, boundary, obstacles)
-        print(f"  找到{len(gaps)}个潜在空隙")
-        
-        # 进行多次扫描，每次使用不同的策略
-        for pass_num in range(3):
-            print(f"  第{pass_num + 1}遍扫描...")
-            added_count = 0
-            
-            # 使用更细的步长扫描
-            scan_step = 25 if pass_num == 2 else 50
-            
-            # 尝试横向放置
-            y = min_y + self.wall_distance
-            while y + self.table_height <= max_y - self.wall_distance:
-                x = min_x + self.wall_distance
-                while x + self.table_width <= max_x - self.wall_distance:
-                    table = BilliardTable(x, y, self.table_width, self.table_height, 0)
-                    temp_layout = layout + [table]
-                    valid, _ = self.constraint_solver.validate_layout(temp_layout, context)
-                    
-                    if valid:
-                        layout.append(table)
-                        added_count += 1
-                        # 跳过已占用的区域
-                        x += self.table_width + self.table_distance
-                    else:
-                        x += scan_step
-                y += scan_step
-            
-            # 尝试纵向放置
-            y = min_y + self.wall_distance
-            while y + self.table_width <= max_y - self.wall_distance:
-                x = min_x + self.wall_distance
-                while x + self.table_height <= max_x - self.wall_distance:
-                    table = BilliardTable(x, y, self.table_width, self.table_height, 90)
-                    temp_layout = layout + [table]
-                    valid, _ = self.constraint_solver.validate_layout(temp_layout, context)
-                    
-                    if valid:
-                        layout.append(table)
-                        added_count += 1
-                        # 跳过已占用的区域
-                        x += self.table_height + self.table_distance
-                    else:
-                        x += scan_step
-                y += scan_step
-            
-            print(f"    第{pass_num + 1}遍新增: {added_count}个台球桌")
-            
-            # 如果这一遍没有新增，提前结束
-            if added_count == 0:
-                break
-        
-        return layout
-    
-    def _find_gaps(self, layout, boundary, obstacles):
-        """识别布局中的空隙"""
-        gaps = []
-        
-        if not layout:
-            return gaps
-        
-        # 按y坐标排序现有的台球桌
-        sorted_tables = sorted(layout, key=lambda t: t.y)
-        
-        # 检查每两个台球桌之间的垂直空隙
-        for i in range(len(sorted_tables) - 1):
-            table1 = sorted_tables[i]
-            table2 = sorted_tables[i + 1]
-            bounds1 = table1.get_bounds()
-            bounds2 = table2.get_bounds()
-            
-            # 计算垂直间隙
-            gap_y = bounds2.y - (bounds1.y + bounds1.height)
-            
-            # 如果间隙足够大（能放下一张桌子+间距）
-            if gap_y >= self.table_height + 2 * self.table_distance:
-                gaps.append({
-                    'y_start': bounds1.y + bounds1.height + self.table_distance,
-                    'y_end': bounds2.y - self.table_distance,
-                    'type': 'vertical'
-                })
-        
-        return gaps
     
     def _calculate_area(self, boundary):
         """计算多边形面积（使用鞋带公式）"""
