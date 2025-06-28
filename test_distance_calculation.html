@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>距离计算测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid #000;
+            margin: 20px 0;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>距离计算测试</h1>
+    <div class="info">
+        <p>测试场景：10m x 15m 场地，纵向台球桌在右侧</p>
+        <p>台球桌4号：位置(6950, 1500)，纵向摆放(90度旋转)</p>
+        <p>原始尺寸：2850 x 1550mm</p>
+        <p>旋转后尺寸：1550 x 2850mm</p>
+    </div>
+    
+    <canvas id="testCanvas" width="500" height="750"></canvas>
+    
+    <div id="results" class="info"></div>
+    
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const scale = 0.05; // 1mm = 0.05px
+        
+        // 场地边界
+        const boundary = [[0, 0], [10000, 0], [10000, 15000], [0, 15000]];
+        
+        // 4号台球桌（纵向）
+        const table = {
+            x: 6950,
+            y: 1500,
+            width: 2850,
+            height: 1550,
+            rotation: 90
+        };
+        
+        // 计算实际矩形边界
+        const rect = {
+            x: table.x,
+            y: table.y,
+            width: table.rotation === 90 ? table.height : table.width,
+            height: table.rotation === 90 ? table.width : table.height
+        };
+        
+        // 绘制场地
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(500, 0);
+        ctx.lineTo(500, 750);
+        ctx.lineTo(0, 750);
+        ctx.closePath();
+        ctx.stroke();
+        
+        // 绘制台球桌
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(
+            rect.x * scale,
+            rect.y * scale,
+            rect.width * scale,
+            rect.height * scale
+        );
+        
+        // 标注台球桌边界
+        ctx.strokeStyle = '#2E7D32';
+        ctx.strokeRect(
+            rect.x * scale,
+            rect.y * scale,
+            rect.width * scale,
+            rect.height * scale
+        );
+        
+        // 计算并显示距离
+        const results = [];
+        
+        // 到右墙的距离
+        const rightWallDist = 10000 - (rect.x + rect.width);
+        results.push(`到右墙距离: ${rightWallDist}mm = ${(rightWallDist/1000).toFixed(2)}m`);
+        
+        // 绘制到右墙的距离线
+        ctx.strokeStyle = '#990000';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo((rect.x + rect.width) * scale, (rect.y + rect.height/2) * scale);
+        ctx.lineTo(10000 * scale, (rect.y + rect.height/2) * scale);
+        ctx.stroke();
+        
+        // 标注距离
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#990000';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+            `${(rightWallDist/1000).toFixed(2)}m`,
+            ((rect.x + rect.width + 10000) / 2) * scale,
+            (rect.y + rect.height/2) * scale - 10
+        );
+        
+        // 添加详细信息
+        results.push(`台球桌右边界: ${rect.x + rect.width}mm`);
+        results.push(`场地右边界: 10000mm`);
+        results.push(`计算: 10000 - ${rect.x + rect.width} = ${rightWallDist}mm`);
+        
+        // 显示中心点
+        const centerX = rect.x + rect.width/2;
+        const centerY = rect.y + rect.height/2;
+        ctx.fillStyle = '#FF0000';
+        ctx.beginPath();
+        ctx.arc(centerX * scale, centerY * scale, 3, 0, 2 * Math.PI);
+        ctx.fill();
+        results.push(`\n台球桌中心: (${centerX}, ${centerY})`);
+        
+        // 标注尺寸
+        ctx.fillStyle = '#000';
+        ctx.font = '12px Arial';
+        ctx.fillText(`${rect.width}mm`, (rect.x + rect.width/2) * scale, (rect.y - 5) * scale);
+        ctx.save();
+        ctx.translate((rect.x - 10) * scale, (rect.y + rect.height/2) * scale);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText(`${rect.height}mm`, 0, 0);
+        ctx.restore();
+        
+        // 显示结果
+        document.getElementById('results').innerHTML = '<h3>计算结果：</h3>' + 
+            results.map(r => `<p>${r}</p>`).join('');
+    </script>
+</body>
+</html>

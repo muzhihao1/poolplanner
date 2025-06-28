@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>距离计算改进测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-case {
+            margin-bottom: 30px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            margin: 10px;
+        }
+        .info {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>距离计算改进测试</h1>
+    <p>验证是否只显示垂直或水平距离，避免斜线距离</p>
+    
+    <div class="test-case">
+        <h3>测试1：水平排列的台球桌</h3>
+        <canvas id="test1" width="600" height="200"></canvas>
+        <div class="info" id="info1"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试2：垂直排列的台球桌</h3>
+        <canvas id="test2" width="200" height="400"></canvas>
+        <div class="info" id="info2"></div>
+    </div>
+    
+    <div class="test-case">
+        <h3>测试3：斜对角排列的台球桌</h3>
+        <canvas id="test3" width="400" height="400"></canvas>
+        <div class="info" id="info3"></div>
+    </div>
+
+    <script>
+        // 绘制矩形
+        function drawRect(ctx, x, y, w, h, label) {
+            ctx.fillStyle = '#90EE90';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + w/2, y + h/2);
+        }
+        
+        // 新的距离计算函数
+        function calculateDistance(rect1, rect2) {
+            let x1, y1, x2, y2;
+            let dx = 0, dy = 0;
+            let isHorizontal = false;
+            let isVertical = false;
+            
+            // X方向判断
+            if (rect1.x > rect2.x + rect2.width) {
+                dx = rect1.x - (rect2.x + rect2.width);
+                x1 = rect1.x;
+                x2 = rect2.x + rect2.width;
+                isHorizontal = true;
+            } else if (rect2.x > rect1.x + rect1.width) {
+                dx = rect2.x - (rect1.x + rect1.width);
+                x1 = rect1.x + rect1.width;
+                x2 = rect2.x;
+                isHorizontal = true;
+            } else {
+                dx = 0;
+                x1 = x2 = (Math.max(rect1.x, rect2.x) + Math.min(rect1.x + rect1.width, rect2.x + rect2.width)) / 2;
+            }
+            
+            // Y方向判断
+            if (rect1.y > rect2.y + rect2.height) {
+                dy = rect1.y - (rect2.y + rect2.height);
+                y1 = rect1.y;
+                y2 = rect2.y + rect2.height;
+                isVertical = true;
+            } else if (rect2.y > rect1.y + rect1.height) {
+                dy = rect2.y - (rect1.y + rect1.height);
+                y1 = rect1.y + rect1.height;
+                y2 = rect2.y;
+                isVertical = true;
+            } else {
+                dy = 0;
+                y1 = y2 = (Math.max(rect1.y, rect2.y) + Math.min(rect1.y + rect1.height, rect2.y + rect2.height)) / 2;
+            }
+            
+            // 优先显示垂直或水平距离
+            let distance, showLine = true;
+            
+            if (isHorizontal && !isVertical) {
+                // 纯水平方向
+                y1 = rect1.y + rect1.height / 2;
+                y2 = rect2.y + rect2.height / 2;
+                distance = dx;
+            } else if (isVertical && !isHorizontal) {
+                // 纯垂直方向
+                x1 = rect1.x + rect1.width / 2;
+                x2 = rect2.x + rect2.width / 2;
+                distance = dy;
+            } else if (isHorizontal && isVertical) {
+                // 斜对角方向 - 选择较小的距离显示
+                if (dx < dy) {
+                    // 显示水平距离
+                    y1 = Math.max(rect1.y, rect2.y) + Math.min(rect1.height, rect2.height) / 2;
+                    y2 = y1;
+                    distance = dx;
+                } else {
+                    // 显示垂直距离
+                    x1 = Math.max(rect1.x, rect2.x) + Math.min(rect1.width, rect2.width) / 2;
+                    x2 = x1;
+                    distance = dy;
+                }
+            } else {
+                distance = 0;
+                showLine = false;
+            }
+            
+            return { x1, y1, x2, y2, distance, showLine, dx, dy };
+        }
+        
+        // 绘制距离线
+        function drawDistance(ctx, dist) {
+            if (!dist.showLine) return;
+            
+            ctx.strokeStyle = '#0066cc';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(dist.x1, dist.y1);
+            ctx.lineTo(dist.x2, dist.y2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 绘制距离文本
+            const midX = (dist.x1 + dist.x2) / 2;
+            const midY = (dist.y1 + dist.y2) / 2;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(midX - 20, midY - 10, 40, 20);
+            ctx.fillStyle = '#0066cc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(dist.distance + 'px', midX, midY);
+        }
+        
+        // 测试1：水平排列
+        const ctx1 = document.getElementById('test1').getContext('2d');
+        const rect1_1 = {x: 50, y: 50, width: 150, height: 100};
+        const rect1_2 = {x: 300, y: 50, width: 150, height: 100};
+        drawRect(ctx1, rect1_1.x, rect1_1.y, rect1_1.width, rect1_1.height, '1');
+        drawRect(ctx1, rect1_2.x, rect1_2.y, rect1_2.width, rect1_2.height, '2');
+        const dist1 = calculateDistance(rect1_1, rect1_2);
+        drawDistance(ctx1, dist1);
+        document.getElementById('info1').innerHTML = `水平距离: ${dist1.dx}px, 垂直距离: ${dist1.dy}px, 显示: ${dist1.distance}px (水平)`;
+        
+        // 测试2：垂直排列
+        const ctx2 = document.getElementById('test2').getContext('2d');
+        const rect2_1 = {x: 25, y: 50, width: 150, height: 100};
+        const rect2_2 = {x: 25, y: 250, width: 150, height: 100};
+        drawRect(ctx2, rect2_1.x, rect2_1.y, rect2_1.width, rect2_1.height, '1');
+        drawRect(ctx2, rect2_2.x, rect2_2.y, rect2_2.width, rect2_2.height, '2');
+        const dist2 = calculateDistance(rect2_1, rect2_2);
+        drawDistance(ctx2, dist2);
+        document.getElementById('info2').innerHTML = `水平距离: ${dist2.dx}px, 垂直距离: ${dist2.dy}px, 显示: ${dist2.distance}px (垂直)`;
+        
+        // 测试3：斜对角排列
+        const ctx3 = document.getElementById('test3').getContext('2d');
+        const rect3_1 = {x: 50, y: 50, width: 150, height: 100};
+        const rect3_2 = {x: 250, y: 200, width: 100, height: 150};
+        drawRect(ctx3, rect3_1.x, rect3_1.y, rect3_1.width, rect3_1.height, '1');
+        drawRect(ctx3, rect3_2.x, rect3_2.y, rect3_2.width, rect3_2.height, '2');
+        const dist3 = calculateDistance(rect3_1, rect3_2);
+        drawDistance(ctx3, dist3);
+        document.getElementById('info3').innerHTML = `水平距离: ${dist3.dx}px, 垂直距离: ${dist3.dy}px, 显示: ${dist3.distance}px (${dist3.dx < dist3.dy ? '水平' : '垂直'})`;
+    </script>
+</body>
+</html>

@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台球桌自动布局系统</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f5f5f5;
+        }
+        
+        #root {
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        
+        .control-panel {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .canvas-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        canvas {
+            border: 1px solid #ddd;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+        }
+        
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .button.secondary {
+            background-color: #008CBA;
+        }
+        
+        .button.secondary:hover {
+            background-color: #007399;
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #da190b;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .stats {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        
+        .stats h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background-color: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            background-color: #efe;
+            color: #3c3;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .mode-selector {
+            margin-bottom: 15px;
+        }
+        
+        .mode-button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            border: 2px solid #ddd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mode-button.active {
+            border-color: #4CAF50;
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .obstacles-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .obstacle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background-color: #f8f9fa;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        
+        .obstacle-item button {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // API基础URL
+        const API_BASE_URL = window.location.origin;
+        
+        // 绘制模式
+        const DrawMode = {
+            BOUNDARY: 'boundary',
+            OBSTACLE: 'obstacle',
+            VIEW: 'view'
+        };
+        
+        function App() {
+            // 状态管理
+            const [drawMode, setDrawMode] = useState(DrawMode.BOUNDARY);
+            const [boundaryPoints, setBoundaryPoints] = useState([]);
+            const [obstacles, setObstacles] = useState([]);
+            const [tables, setTables] = useState([]);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [isOptimizing, setIsOptimizing] = useState(false);
+            const [stats, setStats] = useState(null);
+            const [error, setError] = useState(null);
+            const [success, setSuccess] = useState(null);
+            
+            // 配置参数
+            const [config, setConfig] = useState({
+                wall_distance: 1500,
+                table_distance: 1400,
+                table_width: 2850,
+                table_height: 1550,
+                grid_size: 100,
+                optimize_count: true
+            });
+            
+            // Canvas引用
+            const canvasRef = useRef(null);
+            const [scale, setScale] = useState(0.05); // 50像素 = 1米
+            
+            // 绘制函数
+            const draw = () => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制网格
+                ctx.strokeStyle = '#f0f0f0';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < canvas.width; x += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // 绘制边界
+                if (boundaryPoints.length > 2) {
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(boundaryPoints[0][0] * scale, boundaryPoints[0][1] * scale);
+                    for (let i = 1; i < boundaryPoints.length; i++) {
+                        ctx.lineTo(boundaryPoints[i][0] * scale, boundaryPoints[i][1] * scale);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                    
+                    // 绘制场地尺寸标注
+                    if (boundaryPoints.length >= 4) {
+                        const minX = Math.min(...boundaryPoints.map(p => p[0]));
+                        const maxX = Math.max(...boundaryPoints.map(p => p[0]));
+                        const minY = Math.min(...boundaryPoints.map(p => p[1]));
+                        const maxY = Math.max(...boundaryPoints.map(p => p[1]));
+                        
+                        const width = maxX - minX;
+                        const height = maxY - minY;
+                        
+                        // 绘制宽度标注（底部）
+                        ctx.save();
+                        ctx.strokeStyle = '#666';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 5]);
+                        
+                        const bottomY = (maxY + 800) * scale;
+                        ctx.beginPath();
+                        ctx.moveTo(minX * scale, bottomY);
+                        ctx.lineTo(maxX * scale, bottomY);
+                        ctx.stroke();
+                        
+                        // 箭头
+                        ctx.setLineDash([]);
+                        ctx.beginPath();
+                        ctx.moveTo(minX * scale, bottomY - 5);
+                        ctx.lineTo(minX * scale, bottomY + 5);
+                        ctx.moveTo(maxX * scale, bottomY - 5);
+                        ctx.lineTo(maxX * scale, bottomY + 5);
+                        ctx.stroke();
+                        
+                        // 宽度文本
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillStyle = '#333';
+                        ctx.fillText(`${(width / 1000).toFixed(2)} m`, (minX + maxX) / 2 * scale, bottomY + 10);
+                        
+                        // 绘制高度标注（右侧）
+                        const rightX = (maxX + 800) * scale;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(rightX, minY * scale);
+                        ctx.lineTo(rightX, maxY * scale);
+                        ctx.stroke();
+                        
+                        // 箭头
+                        ctx.setLineDash([]);
+                        ctx.beginPath();
+                        ctx.moveTo(rightX - 5, minY * scale);
+                        ctx.lineTo(rightX + 5, minY * scale);
+                        ctx.moveTo(rightX - 5, maxY * scale);
+                        ctx.lineTo(rightX + 5, maxY * scale);
+                        ctx.stroke();
+                        
+                        // 高度文本
+                        ctx.save();
+                        ctx.translate(rightX + 20, (minY + maxY) / 2 * scale);
+                        ctx.rotate(-Math.PI / 2);
+                        ctx.fillText(`${(height / 1000).toFixed(2)} m`, 0, 0);
+                        ctx.restore();
+                        
+                        ctx.restore();
+                    }
+                }
+                
+                // 绘制障碍物
+                ctx.fillStyle = '#666';
+                obstacles.forEach(obstacle => {
+                    const x = (obstacle.center[0] - obstacle.size[0]/2) * scale;
+                    const y = (obstacle.center[1] - obstacle.size[1]/2) * scale;
+                    const width = obstacle.size[0] * scale;
+                    const height = obstacle.size[1] * scale;
+                    ctx.fillRect(x, y, width, height);
+                });
+                
+                // 绘制台球桌
+                ctx.fillStyle = '#4CAF50';
+                ctx.strokeStyle = '#2E7D32';
+                ctx.lineWidth = 2;
+                tables.forEach((table, index) => {
+                    ctx.save();
+                    
+                    // 计算实际尺寸（考虑旋转）
+                    const actualWidth = table.rotation === 90 ? table.height : table.width;
+                    const actualHeight = table.rotation === 90 ? table.width : table.height;
+                    
+                    // 计算中心点
+                    const centerX = (table.x + actualWidth/2) * scale;
+                    const centerY = (table.y + actualHeight/2) * scale;
+                    
+                    // 绘制矩形（不旋转canvas，直接绘制正确的尺寸）
+                    ctx.fillRect(table.x * scale, table.y * scale, actualWidth * scale, actualHeight * scale);
+                    ctx.strokeRect(table.x * scale, table.y * scale, actualWidth * scale, actualHeight * scale);
+                    
+                    // 绘制台球桌编号
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(index + 1, centerX, centerY);
+                    
+                    ctx.restore();
+                });
+                
+                // 绘制距离标注
+                if (tables.length > 0) {
+                    drawDistanceAnnotations(ctx);
+                }
+            };
+            
+            // 绘制距离标注
+            const drawDistanceAnnotations = (ctx) => {
+                // 计算所有台球桌对之间的距离
+                const distances = [];
+                for (let i = 0; i < tables.length; i++) {
+                    for (let j = i + 1; j < tables.length; j++) {
+                        const dist = calculateTableDistance(tables[i], tables[j]);
+                        distances.push({ ...dist, i, j });
+                    }
+                }
+                
+                // 为每个台球桌找出最近的邻居
+                const nearestNeighbors = new Map();
+                for (let i = 0; i < tables.length; i++) {
+                    nearestNeighbors.set(i, []);
+                }
+                
+                // 找出每个台球桌的最近邻居
+                for (const dist of distances) {
+                    if (dist.distance < 3000) { // 只显示3m以内的距离
+                        nearestNeighbors.get(dist.i).push(dist);
+                        nearestNeighbors.get(dist.j).push(dist);
+                    }
+                }
+                
+                // 绘制距离线和标注
+                const drawnPairs = new Set();
+                for (const [tableIdx, neighbors] of nearestNeighbors) {
+                    // 排序并取最近的2个
+                    neighbors.sort((a, b) => a.distance - b.distance);
+                    const closest = neighbors.slice(0, 2);
+                    
+                    for (const { x1, y1, x2, y2, distance, showLine, i, j } of closest) {
+                        const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
+                        // 过滤条件：
+                        // 1. 没有画过这对
+                        // 2. 需要显示线
+                        // 3. 距离大于200mm（避免显示0.15m这种小距离）
+                        // 4. 只显示水平或垂直的线（不显示斜线）
+                        const isHorizontalLine = Math.abs(y1 - y2) < 50;
+                        const isVerticalLine = Math.abs(x1 - x2) < 50;
+                        
+                        if (!drawnPairs.has(pairKey) && showLine !== false && distance > 200 && (isHorizontalLine || isVerticalLine)) {
+                            drawnPairs.add(pairKey);
+                            
+                            // 绘制距离线
+                            ctx.save();
+                            ctx.strokeStyle = distance < config.table_distance ? '#FF0000' : '#0066cc';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([5, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(x1 * scale, y1 * scale);
+                            ctx.lineTo(x2 * scale, y2 * scale);
+                            ctx.stroke();
+                            
+                            // 绘制距离文本
+                            const midX = (x1 + x2) / 2 * scale;
+                            const midY = (y1 + y2) / 2 * scale;
+                            
+                            ctx.font = '14px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            // 添加白色背景
+                            const text = `${(distance / 1000).toFixed(2)}m`;
+                            const metrics = ctx.measureText(text);
+                            const padding = 3;
+                            
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                            ctx.fillRect(
+                                midX - metrics.width / 2 - padding,
+                                midY - 7 - padding,
+                                metrics.width + padding * 2,
+                                14 + padding * 2
+                            );
+                            
+                            ctx.fillStyle = distance < config.table_distance ? '#FF0000' : '#0066cc';
+                            ctx.fillText(text, midX, midY);
+                            ctx.restore();
+                        }
+                    }
+                }
+                
+                // 2. 绘制到墙壁的距离
+                if (boundaryPoints.length > 2) {
+                    tables.forEach((table, index) => {
+                        const wallDistances = calculateAllWallDistances(table, boundaryPoints);
+                        
+                        // 优先显示上下左右的墙壁距离，而不只是最近的
+                        // 按方向分组
+                        const wallsByDirection = {
+                            left: wallDistances.find(d => d.direction === 'left'),
+                            right: wallDistances.find(d => d.direction === 'right'),
+                            top: wallDistances.find(d => d.direction === 'top'),
+                            bottom: wallDistances.find(d => d.direction === 'bottom')
+                        };
+                        
+                        // 选择要显示的墙壁距离（优先显示较近的边）
+                        const toShow = [];
+                        
+                        // 对于边缘的台球桌，显示相邻的两个墙壁
+                        const sortedDistances = Object.values(wallsByDirection)
+                            .filter(d => d && d.distance < 3000) // 只显示3m以内的
+                            .sort((a, b) => a.distance - b.distance);
+                        
+                        const closestWalls = sortedDistances.slice(0, 2);
+                        
+                        closestWalls.forEach((wallDist, idx) => {
+                            if (wallDist.distance < 2500) { // 只显示2.5m以内的距离
+                                ctx.save();
+                                ctx.strokeStyle = wallDist.distance < config.wall_distance ? '#FF0000' : '#990000';
+                                ctx.lineWidth = 2;
+                                ctx.setLineDash([5, 5]);
+                                
+                                // 对于底部距离，稍微偏移线条避免重叠
+                                let offsetX = 0, offsetY = 0;
+                                if (wallDist.direction === 'bottom') {
+                                    offsetX = (idx - 0.5) * 30; // 水平偏移
+                                }
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(wallDist.x1 * scale + offsetX, wallDist.y1 * scale + offsetY);
+                                ctx.lineTo(wallDist.x2 * scale + offsetX, wallDist.y2 * scale + offsetY);
+                                ctx.stroke();
+                                
+                                // 绘制距离文本
+                                const midX = (wallDist.x1 + wallDist.x2) / 2 * scale + offsetX;
+                                const midY = (wallDist.y1 + wallDist.y2) / 2 * scale + offsetY;
+                                
+                                ctx.font = '14px Arial';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                
+                                // 添加白色背景
+                                const text = `${(wallDist.distance / 1000).toFixed(2)}m`;
+                                const metrics = ctx.measureText(text);
+                                const padding = 3;
+                                
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                                ctx.fillRect(
+                                    midX - metrics.width / 2 - padding,
+                                    midY - 7 - padding,
+                                    metrics.width + padding * 2,
+                                    14 + padding * 2
+                                );
+                                
+                                ctx.fillStyle = wallDist.distance < config.wall_distance ? '#FF0000' : '#990000';
+                                ctx.fillText(text, midX, midY);
+                                ctx.restore();
+                            }
+                        });
+                    });
+                }
+                
+                // 3. 绘制到障碍物的距离
+                obstacles.forEach((obstacle, obsIndex) => {
+                    tables.forEach((table, tableIndex) => {
+                        const obsDist = calculateObstacleDistance(table, obstacle);
+                        if (obsDist.distance < config.wall_distance * 1.5) {
+                            ctx.save();
+                            ctx.strokeStyle = obsDist.distance < config.wall_distance ? '#FF0000' : '#9C27B0';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([5, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(obsDist.x1 * scale, obsDist.y1 * scale);
+                            ctx.lineTo(obsDist.x2 * scale, obsDist.y2 * scale);
+                            ctx.stroke();
+                            
+                            // 绘制距离文本
+                            const midX = (obsDist.x1 + obsDist.x2) / 2 * scale;
+                            const midY = (obsDist.y1 + obsDist.y2) / 2 * scale;
+                            
+                            ctx.font = '14px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            // 添加白色背景
+                            const text = `${(obsDist.distance / 1000).toFixed(2)}m`;
+                            const metrics = ctx.measureText(text);
+                            const padding = 3;
+                            
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                            ctx.fillRect(
+                                midX - metrics.width / 2 - padding,
+                                midY - 7 - padding,
+                                metrics.width + padding * 2,
+                                14 + padding * 2
+                            );
+                            
+                            ctx.fillStyle = obsDist.distance < config.wall_distance ? '#FF0000' : '#9C27B0';
+                            ctx.fillText(text, midX, midY);
+                            ctx.restore();
+                        }
+                    });
+                });
+            };
+            
+            // 计算两个台球桌之间的最短距离
+            const calculateTableDistance = (table1, table2) => {
+                const rect1 = {
+                    x: table1.x,
+                    y: table1.y,
+                    width: table1.rotation === 90 ? table1.height : table1.width,
+                    height: table1.rotation === 90 ? table1.width : table1.height
+                };
+                
+                const rect2 = {
+                    x: table2.x,
+                    y: table2.y,
+                    width: table2.rotation === 90 ? table2.height : table2.width,
+                    height: table2.rotation === 90 ? table2.width : table2.height
+                };
+                
+                // 计算两个矩形之间的距离
+                let x1, y1, x2, y2;
+                let dx = 0, dy = 0;
+                let isHorizontal = false;
+                let isVertical = false;
+                
+                // X方向判断
+                if (rect1.x > rect2.x + rect2.width) {
+                    // rect1在rect2右侧
+                    dx = rect1.x - (rect2.x + rect2.width);
+                    x1 = rect1.x;
+                    x2 = rect2.x + rect2.width;
+                    isHorizontal = true;
+                } else if (rect2.x > rect1.x + rect1.width) {
+                    // rect2在rect1右侧
+                    dx = rect2.x - (rect1.x + rect1.width);
+                    x1 = rect1.x + rect1.width;
+                    x2 = rect2.x;
+                    isHorizontal = true;
+                } else {
+                    // X方向有重叠
+                    dx = 0;
+                    x1 = x2 = (Math.max(rect1.x, rect2.x) + Math.min(rect1.x + rect1.width, rect2.x + rect2.width)) / 2;
+                }
+                
+                // Y方向判断
+                if (rect1.y > rect2.y + rect2.height) {
+                    // rect1在rect2下方
+                    dy = rect1.y - (rect2.y + rect2.height);
+                    y1 = rect1.y;
+                    y2 = rect2.y + rect2.height;
+                    isVertical = true;
+                } else if (rect2.y > rect1.y + rect1.height) {
+                    // rect2在rect1下方
+                    dy = rect2.y - (rect1.y + rect1.height);
+                    y1 = rect1.y + rect1.height;
+                    y2 = rect2.y;
+                    isVertical = true;
+                } else {
+                    // Y方向有重叠
+                    dy = 0;
+                    y1 = y2 = (Math.max(rect1.y, rect2.y) + Math.min(rect1.y + rect1.height, rect2.y + rect2.height)) / 2;
+                }
+                
+                // 优先显示垂直或水平距离
+                let distance, showLine = true;
+                
+                if (isHorizontal && !isVertical) {
+                    // 纯水平方向
+                    y1 = rect1.y + rect1.height / 2;
+                    y2 = rect2.y + rect2.height / 2;
+                    distance = dx;
+                } else if (isVertical && !isHorizontal) {
+                    // 纯垂直方向
+                    x1 = rect1.x + rect1.width / 2;
+                    x2 = rect2.x + rect2.width / 2;
+                    distance = dy;
+                } else if (isHorizontal && isVertical) {
+                    // 斜对角方向 - 选择较小的距离显示
+                    if (dx < dy) {
+                        // 显示水平距离
+                        // 找到两个矩形在Y方向上的重叠区域的中点
+                        const overlapY1 = Math.max(rect1.y, rect2.y);
+                        const overlapY2 = Math.min(rect1.y + rect1.height, rect2.y + rect2.height);
+                        if (overlapY1 < overlapY2) {
+                            y1 = y2 = (overlapY1 + overlapY2) / 2;
+                        } else {
+                            // 如果没有Y方向重叠，取两个矩形中心的Y坐标
+                            y1 = rect1.y + rect1.height / 2;
+                            y2 = rect2.y + rect2.height / 2;
+                        }
+                        distance = dx;
+                    } else {
+                        // 显示垂直距离
+                        // 找到两个矩形在X方向上的重叠区域的中点
+                        const overlapX1 = Math.max(rect1.x, rect2.x);
+                        const overlapX2 = Math.min(rect1.x + rect1.width, rect2.x + rect2.width);
+                        if (overlapX1 < overlapX2) {
+                            x1 = x2 = (overlapX1 + overlapX2) / 2;
+                        } else {
+                            // 如果没有X方向重叠，取两个矩形中心的X坐标
+                            x1 = rect1.x + rect1.width / 2;
+                            x2 = rect2.x + rect2.width / 2;
+                        }
+                        distance = dy;
+                    }
+                } else {
+                    // 有重叠的情况
+                    distance = 0;
+                    showLine = false;
+                }
+                
+                return { x1, y1, x2, y2, distance, showLine };
+            };
+            
+            // 计算台球桌到墙壁的最短距离
+            const calculateWallDistance = (table, boundary) => {
+                const rect = {
+                    x: table.x,
+                    y: table.y,
+                    width: table.rotation === 90 ? table.height : table.width,
+                    height: table.rotation === 90 ? table.width : table.height
+                };
+                
+                // 简化：计算到矩形边界的距离
+                const minX = Math.min(...boundary.map(p => p[0]));
+                const maxX = Math.max(...boundary.map(p => p[0]));
+                const minY = Math.min(...boundary.map(p => p[1]));
+                const maxY = Math.max(...boundary.map(p => p[1]));
+                
+                let minDist = Infinity;
+                let closestPoint = null;
+                
+                // 左边
+                const distLeft = rect.x - minX;
+                if (distLeft < minDist) {
+                    minDist = distLeft;
+                    closestPoint = { x1: rect.x, y1: rect.y + rect.height/2, x2: minX, y2: rect.y + rect.height/2 };
+                }
+                
+                // 右边
+                const distRight = maxX - (rect.x + rect.width);
+                if (distRight < minDist) {
+                    minDist = distRight;
+                    closestPoint = { x1: rect.x + rect.width, y1: rect.y + rect.height/2, x2: maxX, y2: rect.y + rect.height/2 };
+                }
+                
+                // 上边
+                const distTop = rect.y - minY;
+                if (distTop < minDist) {
+                    minDist = distTop;
+                    closestPoint = { x1: rect.x + rect.width/2, y1: rect.y, x2: rect.x + rect.width/2, y2: minY };
+                }
+                
+                // 下边
+                const distBottom = maxY - (rect.y + rect.height);
+                if (distBottom < minDist) {
+                    minDist = distBottom;
+                    closestPoint = { x1: rect.x + rect.width/2, y1: rect.y + rect.height, x2: rect.x + rect.width/2, y2: maxY };
+                }
+                
+                return { ...closestPoint, distance: minDist };
+            };
+            
+            // 计算到所有墙壁的距离
+            const calculateAllWallDistances = (table, boundary) => {
+                const rect = {
+                    x: table.x,
+                    y: table.y,
+                    width: table.rotation === 90 ? table.height : table.width,
+                    height: table.rotation === 90 ? table.width : table.height
+                };
+                
+                const minX = Math.min(...boundary.map(p => p[0]));
+                const maxX = Math.max(...boundary.map(p => p[0]));
+                const minY = Math.min(...boundary.map(p => p[1]));
+                const maxY = Math.max(...boundary.map(p => p[1]));
+                
+                const distances = [];
+                
+                // 左边距离 - 从桌子左边缘到墙
+                const distLeft = rect.x - minX;
+                distances.push({
+                    x1: rect.x,
+                    y1: rect.y + rect.height/2,
+                    x2: minX,
+                    y2: rect.y + rect.height/2,
+                    distance: distLeft,
+                    direction: 'left'
+                });
+                
+                // 右边距离
+                const distRight = maxX - (rect.x + rect.width);
+                distances.push({
+                    x1: rect.x + rect.width,
+                    y1: rect.y + rect.height/2,
+                    x2: maxX,
+                    y2: rect.y + rect.height/2,
+                    distance: distRight,
+                    direction: 'right'
+                });
+                
+                // 上边距离
+                const distTop = rect.y - minY;
+                distances.push({
+                    x1: rect.x + rect.width/2,
+                    y1: rect.y,
+                    x2: rect.x + rect.width/2,
+                    y2: minY,
+                    distance: distTop,
+                    direction: 'top'
+                });
+                
+                // 下边距离
+                const distBottom = maxY - (rect.y + rect.height);
+                distances.push({
+                    x1: rect.x + rect.width/2,
+                    y1: rect.y + rect.height,
+                    x2: rect.x + rect.width/2,
+                    y2: maxY,
+                    distance: distBottom,
+                    direction: 'bottom'
+                });
+                
+                return distances;
+            };
+            
+            // 计算台球桌到障碍物的距离
+            const calculateObstacleDistance = (table, obstacle) => {
+                const tableRect = {
+                    x: table.x,
+                    y: table.y,
+                    width: table.rotation === 90 ? table.height : table.width,
+                    height: table.rotation === 90 ? table.width : table.height
+                };
+                
+                const obsRect = {
+                    x: obstacle.center[0] - obstacle.size[0]/2,
+                    y: obstacle.center[1] - obstacle.size[1]/2,
+                    width: obstacle.size[0],
+                    height: obstacle.size[1]
+                };
+                
+                // 计算两个矩形之间的最短距离
+                let dx = 0, dy = 0;
+                let x1, y1, x2, y2;
+                
+                // X方向距离
+                if (tableRect.x > obsRect.x + obsRect.width) {
+                    // 台球桌在障碍物右侧
+                    dx = tableRect.x - (obsRect.x + obsRect.width);
+                    x1 = tableRect.x;
+                    x2 = obsRect.x + obsRect.width;
+                } else if (obsRect.x > tableRect.x + tableRect.width) {
+                    // 障碍物在台球桌右侧
+                    dx = obsRect.x - (tableRect.x + tableRect.width);
+                    x1 = tableRect.x + tableRect.width;
+                    x2 = obsRect.x;
+                } else {
+                    // X方向有重叠
+                    dx = 0;
+                    x1 = x2 = (Math.max(tableRect.x, obsRect.x) + Math.min(tableRect.x + tableRect.width, obsRect.x + obsRect.width)) / 2;
+                }
+                
+                // Y方向距离
+                if (tableRect.y > obsRect.y + obsRect.height) {
+                    // 台球桌在障碍物下方
+                    dy = tableRect.y - (obsRect.y + obsRect.height);
+                    y1 = tableRect.y;
+                    y2 = obsRect.y + obsRect.height;
+                } else if (obsRect.y > tableRect.y + tableRect.height) {
+                    // 障碍物在台球桌下方
+                    dy = obsRect.y - (tableRect.y + tableRect.height);
+                    y1 = tableRect.y + tableRect.height;
+                    y2 = obsRect.y;
+                } else {
+                    // Y方向有重叠
+                    dy = 0;
+                    y1 = y2 = (Math.max(tableRect.y, obsRect.y) + Math.min(tableRect.y + tableRect.height, obsRect.y + obsRect.height)) / 2;
+                }
+                
+                // 优先显示垂直或水平距离
+                let distance;
+                const isHorizontal = dx > 0;
+                const isVertical = dy > 0;
+                
+                if (isHorizontal && !isVertical) {
+                    // 纯水平方向
+                    y1 = tableRect.y + tableRect.height / 2;
+                    y2 = obsRect.y + obsRect.height / 2;
+                    distance = dx;
+                } else if (isVertical && !isHorizontal) {
+                    // 纯垂直方向
+                    x1 = tableRect.x + tableRect.width / 2;
+                    x2 = obsRect.x + obsRect.width / 2;
+                    distance = dy;
+                } else if (isHorizontal && isVertical) {
+                    // 斜对角方向 - 选择较小的距离显示
+                    if (dx < dy) {
+                        // 显示水平距离
+                        y1 = Math.max(tableRect.y, obsRect.y);
+                        y2 = y1;
+                        if (y1 < obsRect.y || y1 > obsRect.y + obsRect.height) {
+                            y1 = y2 = tableRect.y + tableRect.height / 2;
+                        }
+                        distance = dx;
+                    } else {
+                        // 显示垂直距离
+                        x1 = Math.max(tableRect.x, obsRect.x);
+                        x2 = x1;
+                        if (x1 < obsRect.x || x1 > obsRect.x + obsRect.width) {
+                            x1 = x2 = tableRect.x + tableRect.width / 2;
+                        }
+                        distance = dy;
+                    }
+                } else {
+                    // 有重叠
+                    distance = 0;
+                }
+                
+                return { x1, y1, x2, y2, distance };
+            };
+            
+            // 重绘
+            useEffect(() => {
+                draw();
+            }, [boundaryPoints, obstacles, tables, scale]);
+            
+            // 处理鼠标点击
+            const handleCanvasClick = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / scale;
+                const y = (e.clientY - rect.top) / scale;
+                
+                if (drawMode === DrawMode.BOUNDARY) {
+                    setBoundaryPoints([...boundaryPoints, [x, y]]);
+                } else if (drawMode === DrawMode.OBSTACLE) {
+                    setObstacles([...obstacles, {
+                        type: 'rectangle',
+                        center: [x, y],
+                        size: [400, 400] // 默认400x400mm的柱子
+                    }]);
+                }
+            };
+            
+            // 清除边界
+            const clearBoundary = () => {
+                setBoundaryPoints([]);
+                setTables([]);
+                setStats(null);
+            };
+            
+            // 清除障碍物
+            const clearObstacles = () => {
+                setObstacles([]);
+                setTables([]);
+                setStats(null);
+            };
+            
+            // 删除特定障碍物
+            const removeObstacle = (index) => {
+                const newObstacles = [...obstacles];
+                newObstacles.splice(index, 1);
+                setObstacles(newObstacles);
+            };
+            
+            // 优化布局
+            const optimizeLayout = async () => {
+                if (boundaryPoints.length < 3) {
+                    setError('请先绘制场地边界（至少3个点）');
+                    return;
+                }
+                
+                setIsOptimizing(true);
+                setError(null);
+                setSuccess(null);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/layout/optimize`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            boundary: boundaryPoints,
+                            obstacles: obstacles,
+                            config: config
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        setTables(data.tables);
+                        setStats(data.stats);
+                        setSuccess(`成功放置 ${data.count} 个台球桌！优化用时 ${data.optimization_time.toFixed(2)} 秒`);
+                    } else {
+                        setError(data.error || '优化失败');
+                    }
+                } catch (err) {
+                    setError('网络错误：' + err.message);
+                } finally {
+                    setIsOptimizing(false);
+                }
+            };
+            
+            // 加载示例
+            const loadExample = () => {
+                // 10m x 15m 的矩形场地
+                setBoundaryPoints([
+                    [0, 0],
+                    [10000, 0],
+                    [10000, 15000],
+                    [0, 15000]
+                ]);
+                
+                // 两个柱子
+                setObstacles([
+                    {
+                        type: 'rectangle',
+                        center: [3000, 5000],
+                        size: [400, 400]
+                    },
+                    {
+                        type: 'rectangle',
+                        center: [7000, 10000],
+                        size: [400, 400]
+                    }
+                ]);
+                
+                // 调整缩放以适应
+                setScale(0.04);
+            };
+            
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>台球桌自动布局系统</h1>
+                        <p>绘制场地边界和障碍物，系统将自动计算最优的台球桌摆放方案</p>
+                    </div>
+                    
+                    <div className="main-content">
+                        <div className="control-panel">
+                            <h2>控制面板</h2>
+                            
+                            <div className="mode-selector">
+                                <button 
+                                    className={`mode-button ${drawMode === DrawMode.BOUNDARY ? 'active' : ''}`}
+                                    onClick={() => setDrawMode(DrawMode.BOUNDARY)}
+                                >
+                                    绘制边界
+                                </button>
+                                <button 
+                                    className={`mode-button ${drawMode === DrawMode.OBSTACLE ? 'active' : ''}`}
+                                    onClick={() => setDrawMode(DrawMode.OBSTACLE)}
+                                >
+                                    添加障碍物
+                                </button>
+                                <button 
+                                    className={`mode-button ${drawMode === DrawMode.VIEW ? 'active' : ''}`}
+                                    onClick={() => setDrawMode(DrawMode.VIEW)}
+                                >
+                                    查看模式
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <button className="button" onClick={loadExample}>
+                                    加载示例
+                                </button>
+                                <button className="button secondary" onClick={clearBoundary}>
+                                    清除边界
+                                </button>
+                                <button className="button danger" onClick={clearObstacles}>
+                                    清除障碍物
+                                </button>
+                            </div>
+                            
+                            <h3 style={{marginTop: '20px'}}>配置参数</h3>
+                            
+                            <div className="input-group">
+                                <label>与墙壁最小距离 (mm)</label>
+                                <input 
+                                    type="number" 
+                                    value={config.wall_distance}
+                                    onChange={(e) => setConfig({...config, wall_distance: parseInt(e.target.value)})}
+                                />
+                            </div>
+                            
+                            <div className="input-group">
+                                <label>台球桌之间最小距离 (mm)</label>
+                                <input 
+                                    type="number" 
+                                    value={config.table_distance}
+                                    onChange={(e) => setConfig({...config, table_distance: parseInt(e.target.value)})}
+                                />
+                            </div>
+                            
+                            <div className="input-group">
+                                <label>台球桌宽度 (mm)</label>
+                                <input 
+                                    type="number" 
+                                    value={config.table_width}
+                                    onChange={(e) => setConfig({...config, table_width: parseInt(e.target.value)})}
+                                />
+                            </div>
+                            
+                            <div className="input-group">
+                                <label>台球桌高度 (mm)</label>
+                                <input 
+                                    type="number" 
+                                    value={config.table_height}
+                                    onChange={(e) => setConfig({...config, table_height: parseInt(e.target.value)})}
+                                />
+                            </div>
+                            
+                            <div className="input-group">
+                                <label style={{ display: 'flex', alignItems: 'center' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={config.optimize_count}
+                                        onChange={(e) => setConfig({...config, optimize_count: e.target.checked})}
+                                        style={{ marginRight: '8px' }}
+                                    />
+                                    最大化台球桌数量
+                                </label>
+                            </div>
+                            
+                            <button 
+                                className="button" 
+                                onClick={optimizeLayout}
+                                disabled={isOptimizing || boundaryPoints.length < 3}
+                                style={{width: '100%', marginTop: '20px'}}
+                            >
+                                {isOptimizing ? '优化中...' : '开始优化布局'}
+                                {isOptimizing && <span className="loading"></span>}
+                            </button>
+                            
+                            {error && <div className="error-message">{error}</div>}
+                            {success && <div className="success-message">{success}</div>}
+                            
+                            {stats && (
+                                <div className="stats">
+                                    <h3>统计信息</h3>
+                                    <div className="stats-item">
+                                        <span>台球桌数量:</span>
+                                        <span>{stats.table_count}</span>
+                                    </div>
+                                    <div className="stats-item">
+                                        <span>空间利用率:</span>
+                                        <span>{stats.space_utilization}%</span>
+                                    </div>
+                                    <div className="stats-item">
+                                        <span>场地总面积:</span>
+                                        <span>{stats.total_area} m²</span>
+                                    </div>
+                                    <div className="stats-item">
+                                        <span>使用面积:</span>
+                                        <span>{stats.used_area} m²</span>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {obstacles.length > 0 && (
+                                <div className="obstacles-list">
+                                    <h3>障碍物列表</h3>
+                                    {obstacles.map((obs, index) => (
+                                        <div key={index} className="obstacle-item">
+                                            <span>障碍物 {index + 1}: {obs.size[0]}×{obs.size[1]}mm</span>
+                                            <button 
+                                                className="button danger"
+                                                onClick={() => removeObstacle(index)}
+                                            >
+                                                删除
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="canvas-container">
+                            <h2>场地视图</h2>
+                            <p style={{marginBottom: '10px', color: '#666'}}>
+                                当前模式: {
+                                    drawMode === DrawMode.BOUNDARY ? '点击绘制边界点' :
+                                    drawMode === DrawMode.OBSTACLE ? '点击添加障碍物' :
+                                    '查看布局'
+                                }
+                            </p>
+                            <canvas 
+                                ref={canvasRef}
+                                width={800}
+                                height={600}
+                                onClick={handleCanvasClick}
+                                style={{cursor: drawMode === DrawMode.VIEW ? 'default' : 'crosshair'}}
+                            />
+                            <p style={{marginTop: '10px', color: '#666', fontSize: '14px'}}>
+                                比例: 1像素 = {(1/scale).toFixed(0)}mm | 网格: 1格 = 1米
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // 渲染应用
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

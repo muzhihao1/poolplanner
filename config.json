@@ -1,0 +1,69 @@
+{
+  "default_config": {
+    "wall_distance": 1500,
+    "table_distance": 1400,
+    "table_width": 2850,
+    "table_height": 1550,
+    "grid_size": 100,
+    "use_regular_layout": true,
+    "layout_mode": "auto",
+    "optimize_count": true
+  },
+  "presets": {
+    "standard": {
+      "name": "标准配置",
+      "wall_distance": 1500,
+      "table_distance": 1400,
+      "table_width": 2850,
+      "table_height": 1550
+    },
+    "compact": {
+      "name": "紧凑配置",
+      "wall_distance": 1200,
+      "table_distance": 1200,
+      "table_width": 2850,
+      "table_height": 1550
+    },
+    "spacious": {
+      "name": "宽敞配置",
+      "wall_distance": 2000,
+      "table_distance": 1800,
+      "table_width": 2850,
+      "table_height": 1550
+    }
+  },
+  "visualization": {
+    "colors": {
+      "table": "#4CAF50",
+      "table_border": "#2E7D32",
+      "obstacle": "#666666",
+      "boundary": "#333333",
+      "distance_line": "#0066cc",
+      "wall_distance_line": "#990000",
+      "obstacle_distance_line": "#9C27B0",
+      "error_color": "#FF0000"
+    },
+    "line_styles": {
+      "distance_dash": [5, 5],
+      "boundary_width": 3,
+      "table_border_width": 2
+    },
+    "font": {
+      "size": 14,
+      "family": "Arial",
+      "number_size": 16
+    }
+  },
+  "optimization": {
+    "max_iterations": 15,
+    "remove_ratio": 0.2,
+    "grid_search_sizes": [50, 100, 200],
+    "compression_step": 50
+  },
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8080,
+    "debug": true,
+    "max_upload_size": 16777216
+  }
+}
