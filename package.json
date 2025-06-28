@@ -2,11 +2,11 @@
   "name": "billiard-layout-system",
   "version": "1.0.0",
   "description": "台球桌自动布局系统 - 智能优化台球厅布局",
-  "main": "app.py",
+  "main": "simple_app.py",
   "scripts": {
     "build": "echo 'No build step required - using client-side Babel transformation'",
-    "start": "python3 app.py",
-    "dev": "python3 app.py",
+    "start": "python3 simple_app.py",
+    "dev": "python3 simple_app.py",
     "test": "echo 'No tests specified'"
   },
   "keywords": [
